@@ -1,10 +1,22 @@
-# BearOps v1.1
+# BearOps v1.3
 
 Mobile-first work command centre for tasks, deadlines, follow-ups and bottlenecks.
 
-## What changed in v1.1
+## What changed in v1.3
 
-- New premium gold/black BearOps logo used in the app and PWA icons.
+- Added a second Waiting On dependency to each task.
+- Added global search across open, waiting and completed work, including titles, projects, notes, dependencies and workflow names.
+- Added linked workflow chains. Completing a non-recurring task now asks whether to create the next linked action or complete and close the chain.
+- Kept email and Outlook integration out of this release; all features work locally inside BearOps.
+
+## Included from v1.2
+
+- Replaced the original lion-like logo with a purpose-built geometric bear emblem.
+- Removed all wording and taglines from the icon so it remains clear at phone-home-screen size.
+- Added maskable icon support for cleaner Android installation and home-screen cropping.
+
+### Included from v1.1
+
 - Fresh installs are preloaded with the current work list derived from the 9 September 2026 notes plus older unresolved carry-forward items where no completion was recorded.
 - Manta, David and Kerri are permanent Waiting On choices and are always visible in the bottleneck view, including when their count is zero.
 - Current work list can be reloaded from More > Data.
@@ -15,7 +27,7 @@ Mobile-first work command centre for tasks, deadlines, follow-ups and bottleneck
 
 Replace the files in the root of the existing `bearops` repository with the contents of this package and commit to `main`. GitHub Pages should redeploy automatically.
 
-The service-worker cache was bumped to `bearops-v1.1.0`. After GitHub finishes deploying, close and reopen the installed app. If an old screen remains cached, refresh the page once in Chrome.
+The service-worker cache was bumped to `bearops-v1.3.0`. After GitHub finishes deploying, close and reopen the installed app. If an old screen or icon remains cached, refresh the page once in Chrome. Android may require removing and re-adding the home-screen shortcut before it displays the replacement icon.
 
 ## First run / current list
 

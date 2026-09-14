@@ -23,7 +23,10 @@
           </div>
         </div>
       </div>
-      <button id="quickAddBtn" class="icon-btn primary" type="button" aria-label="Add task">+</button>
+      <div class="topbar-actions">
+        <button id="globalSearchBtn" class="icon-btn" type="button" aria-label="Search BearOps">⌕</button>
+        <button id="quickAddBtn" class="icon-btn primary" type="button" aria-label="Add task">+</button>
+      </div>
     </header>
 
     <main>
@@ -256,7 +259,7 @@
       </div>
 
       <div class="grid-2">
-        <label>Waiting on
+        <label>Waiting on — primary
           <select id="taskWaitingOn">
             <option value="">—</option>
             <option>Manta</option>
@@ -271,8 +274,29 @@
             <option>Other</option>
           </select>
         </label>
+        <label>Waiting on — secondary
+          <select id="taskWaitingOn2">
+            <option value="">—</option>
+            <option>Manta</option>
+            <option>David</option>
+            <option>Kerri</option>
+            <option>Factory</option>
+            <option>Supplier</option>
+            <option>Client</option>
+            <option>Architect</option>
+            <option>Installer</option>
+            <option>Prestige / Internal</option>
+            <option>Other</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid-2">
         <label>Chase date
           <input id="taskChaseDate" type="date" />
+        </label>
+        <label>Workflow / chain name
+          <input id="taskChainName" maxlength="100" placeholder="e.g. Windsor replacement order" />
         </label>
       </div>
 
@@ -323,6 +347,45 @@
         <div class="spacer"></div>
         <button class="btn secondary" id="quickCancelBtn" type="button">Cancel</button>
         <button class="btn primary" type="submit">Add task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="searchDialog" class="task-dialog small">
+    <div class="task-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">SEARCH</p>
+          <h2>Find anything</h2>
+        </div>
+        <button id="closeSearchBtn" class="icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="globalSearchInput" type="search" autocomplete="off" placeholder="Task, project, notes, person or workflow…" />
+      <p class="muted small-text">Searches open, waiting and completed tasks.</p>
+      <div id="globalSearchResults" class="task-list search-results"></div>
+    </div>
+  </dialog>
+
+  <dialog id="completionDialog" class="task-dialog small">
+    <form id="completionForm" class="task-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">WORKFLOW</p>
+          <h2>What happens next?</h2>
+        </div>
+        <button id="closeCompletionBtn" class="icon-btn" type="button" aria-label="Cancel">×</button>
+      </div>
+      <input id="completionTaskId" type="hidden" />
+      <p id="completionTaskLabel" class="completion-task-label"></p>
+      <label>Next task
+        <input id="nextTaskTitle" maxlength="160" placeholder="Enter the next action in this chain" />
+      </label>
+      <label>Next task due date
+        <input id="nextTaskDueDate" type="date" />
+      </label>
+      <div class="dialog-actions completion-actions">
+        <button id="closeChainBtn" class="btn secondary" type="button">Complete & close chain</button>
+        <button class="btn primary" type="submit">Complete & create next task</button>
       </div>
     </form>
   </dialog>

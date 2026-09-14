@@ -1,4 +1,4 @@
-const CACHE = 'bearops-v1.1.0';
+const CACHE = 'bearops-v1.3.0';
 const ASSETS = ['./','./index.html','./styles.css','./app.js','./seed.js','./manifest.json','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', (event) => {

@@ -16,9 +16,13 @@
     taskId: $('taskId'), taskTitle: $('taskTitle'), taskProject: $('taskProject'), taskType: $('taskType'),
     taskPriority: $('taskPriority'), taskStatus: $('taskStatus'), taskDueDate: $('taskDueDate'), taskDueTime: $('taskDueTime'),
     taskReminderDate: $('taskReminderDate'), taskReminderTime: $('taskReminderTime'), taskWaitingOn: $('taskWaitingOn'),
-    taskChaseDate: $('taskChaseDate'), taskRepeat: $('taskRepeat'), taskFocus: $('taskFocus'), taskNotes: $('taskNotes'),
+    taskWaitingOn2: $('taskWaitingOn2'), taskChaseDate: $('taskChaseDate'), taskChainName: $('taskChainName'),
+    taskRepeat: $('taskRepeat'), taskFocus: $('taskFocus'), taskNotes: $('taskNotes'),
     deleteTaskBtn: $('deleteTaskBtn'), quickDialog: $('quickDialog'), quickForm: $('quickForm'), quickText: $('quickText'),
     taskStatusFilter: $('taskStatusFilter'), taskPriorityFilter: $('taskPriorityFilter'), taskSearch: $('taskSearch'),
+    searchDialog: $('searchDialog'), globalSearchInput: $('globalSearchInput'), globalSearchResults: $('globalSearchResults'),
+    completionDialog: $('completionDialog'), completionForm: $('completionForm'), completionTaskId: $('completionTaskId'),
+    completionTaskLabel: $('completionTaskLabel'), nextTaskTitle: $('nextTaskTitle'), nextTaskDueDate: $('nextTaskDueDate'),
     toast: $('toast'), summaryOutput: $('summaryOutput')
   };
 
@@ -68,6 +72,7 @@
   function saveTasks() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     renderAll();
+    if (els.searchDialog?.open) renderGlobalSearch();
   }
 
   function uid() { return `t_${Date.now()}_${Math.random().toString(36).slice(2,7)}`; }
@@ -86,8 +91,14 @@
       reminderDate: raw.reminderDate || '',
       reminderTime: raw.reminderTime || '',
       waitingOn: raw.waitingOn || '',
+      waitingOn2: raw.waitingOn2 || '',
       waitingSince: raw.waitingSince || (raw.status === 'waiting' ? toDateInput(new Date()) : ''),
       chaseDate: raw.chaseDate || '',
+      chainId: raw.chainId || '',
+      chainName: (raw.chainName || '').trim(),
+      chainStep: Number(raw.chainStep) || (raw.chainName ? 1 : 0),
+      parentTaskId: raw.parentTaskId || '',
+      chainClosedAt: raw.chainClosedAt || '',
       repeat: raw.repeat || 'none',
       focus: raw.focus === true || raw.focus === 'true',
       notes: raw.notes || '',
@@ -103,6 +114,15 @@
     if (t.status === 'completed' || !t.dueDate) return false;
     const diff = dateDiffDays(t.dueDate);
     return diff >= 0 && diff <= days;
+  }
+
+  function taskWaiters(t) {
+    return [...new Set([t.waitingOn, t.waitingOn2].filter(Boolean))];
+  }
+
+  function taskSearchText(t) {
+    return [t.title, t.project, t.type, t.priority, t.status, t.notes, t.waitingOn, t.waitingOn2, t.chainName]
+      .filter(Boolean).join(' ').toLowerCase();
   }
 
   function sortTasks(list) {
@@ -131,12 +151,13 @@
       const label = diff < 0 ? `Overdue ${Math.abs(diff)}d` : diff === 0 ? 'Due today' : diff === 1 ? 'Due tomorrow' : `Due ${formatDate(t.dueDate,{weekday:true})}`;
       meta.push(`<span>${isOverdue(t) ? '⚠' : '◷'} ${label}${t.dueTime ? ` · ${escapeHtml(t.dueTime)}` : ''}</span>`);
     }
-    if (t.status === 'waiting' && t.waitingOn) {
+    if (t.status === 'waiting' && taskWaiters(t).length) {
       const waitDays = t.waitingSince ? Math.max(0, -dateDiffDays(t.waitingSince)) : 0;
-      meta.push(`<span>⏳ ${escapeHtml(t.waitingOn)}${waitDays ? ` · ${waitDays}d` : ''}</span>`);
+      meta.push(`<span>⏳ ${taskWaiters(t).map(escapeHtml).join(' + ')}${waitDays ? ` · ${waitDays}d` : ''}</span>`);
     }
     if (t.chaseDate) meta.push(`<span>↻ Chase ${formatDate(t.chaseDate,{weekday:true})}</span>`);
     if (t.repeat !== 'none') meta.push(`<span>⟳ ${escapeHtml(t.repeat)}</span>`);
+    if (t.chainName) meta.push(`<span>⛓ ${escapeHtml(t.chainName)}${t.chainStep ? ` · step ${t.chainStep}` : ''}</span>`);
     if (t.focus && t.status !== 'completed') meta.push('<span>★ Today focus</span>');
 
     return `<article class="${classes.join(' ')}" data-task-id="${escapeHtml(t.id)}">
@@ -173,11 +194,11 @@
     const corePeople = ['Manta','David','Kerri'];
     const activeOthers = WAITING_DEFAULTS
       .filter(name => !corePeople.includes(name))
-      .map(name => [name, waiting.filter(t => t.waitingOn === name).length])
+      .map(name => [name, waiting.filter(t => taskWaiters(t).includes(name)).length])
       .filter(([,count]) => count > 0)
       .sort((a,b) => b[1]-a[1]);
     const counts = [
-      ...corePeople.map(name => [name, waiting.filter(t => t.waitingOn === name).length]),
+      ...corePeople.map(name => [name, waiting.filter(t => taskWaiters(t).includes(name)).length]),
       ...activeOthers
     ].slice(0,6);
     els.bottleneckStrip.innerHTML = counts.map(([name,count]) => `<button class="bottle-card ${count>1 ? 'hot' : ''}" type="button" data-waiting-person="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>${count} ${count===1?'item':'items'} waiting</span></button>`).join('');
@@ -196,7 +217,7 @@
       if (status === 'overdue' && !isOverdue(t)) return false;
       if (status === 'completed' && t.status !== 'completed') return false;
       if (priority !== 'all' && t.priority !== priority) return false;
-      if (q && !`${t.title} ${t.project} ${t.notes} ${t.waitingOn}`.toLowerCase().includes(q)) return false;
+      if (q && !taskSearchText(t).includes(q)) return false;
       return true;
     });
     list = sortTasks(list);
@@ -206,11 +227,11 @@
   function renderWaiting() {
     const waiting = tasks.filter(t => t.status === 'waiting');
     const corePeople = ['Manta','David','Kerri'];
-    const activeOthers = WAITING_DEFAULTS.filter(name => !corePeople.includes(name) && waiting.some(t => t.waitingOn === name));
+    const activeOthers = WAITING_DEFAULTS.filter(name => !corePeople.includes(name) && waiting.some(t => taskWaiters(t).includes(name)));
     const people = ['All', ...corePeople, ...activeOthers];
-    els.waitingPeopleTabs.innerHTML = people.map(name => `<button class="chip ${activeWaitingFilter===name?'active':''}" type="button" data-wait-filter="${escapeHtml(name)}">${escapeHtml(name)}${name==='All' ? ` (${waiting.length})` : ` (${waiting.filter(t=>t.waitingOn===name).length})`}</button>`).join('');
+    els.waitingPeopleTabs.innerHTML = people.map(name => `<button class="chip ${activeWaitingFilter===name?'active':''}" type="button" data-wait-filter="${escapeHtml(name)}">${escapeHtml(name)}${name==='All' ? ` (${waiting.length})` : ` (${waiting.filter(t=>taskWaiters(t).includes(name)).length})`}</button>`).join('');
     let list = waiting;
-    if (activeWaitingFilter !== 'All') list = list.filter(t => t.waitingOn === activeWaitingFilter);
+    if (activeWaitingFilter !== 'All') list = list.filter(t => taskWaiters(t).includes(activeWaitingFilter));
     list = sortTasks(list);
     els.waitingList.innerHTML = list.length ? list.map(taskCard).join('') : emptyState('Nothing waiting here.');
   }
@@ -288,7 +309,8 @@
     const map = {
       taskId: t.id, taskTitle: t.title, taskProject: t.project, taskType: t.type, taskPriority: t.priority,
       taskStatus: t.status, taskDueDate: t.dueDate, taskDueTime: t.dueTime, taskReminderDate: t.reminderDate,
-      taskReminderTime: t.reminderTime, taskWaitingOn: t.waitingOn, taskChaseDate: t.chaseDate,
+      taskReminderTime: t.reminderTime, taskWaitingOn: t.waitingOn, taskWaitingOn2: t.waitingOn2,
+      taskChaseDate: t.chaseDate, taskChainName: t.chainName,
       taskRepeat: t.repeat, taskFocus: String(t.focus), taskNotes: t.notes
     };
     Object.entries(map).forEach(([id,val]) => { $(id).value = val || ''; });
@@ -299,31 +321,39 @@
     const id = els.taskId.value;
     const previous = tasks.find(t => t.id === id);
     const status = els.taskStatus.value;
+    const promptCompletion = Boolean(previous && previous.status !== 'completed' && status === 'completed' && previous.repeat === 'none');
+    const storedStatus = promptCompletion ? previous.status : status;
     const payload = normalizeTask({
       ...(previous || {}), id: id || undefined,
       title: els.taskTitle.value,
       project: els.taskProject.value,
       type: els.taskType.value,
       priority: els.taskPriority.value,
-      status,
+      status: storedStatus,
       dueDate: els.taskDueDate.value,
       dueTime: els.taskDueTime.value,
       reminderDate: els.taskReminderDate.value,
       reminderTime: els.taskReminderTime.value,
       waitingOn: els.taskWaitingOn.value,
-      waitingSince: status === 'waiting' ? (previous?.waitingSince || toDateInput(new Date())) : '',
+      waitingOn2: els.taskWaitingOn2.value,
+      waitingSince: storedStatus === 'waiting' ? (previous?.waitingSince || toDateInput(new Date())) : '',
       chaseDate: els.taskChaseDate.value,
+      chainId: previous?.chainId || (els.taskChainName.value.trim() ? `c_${Date.now()}_${Math.random().toString(36).slice(2,7)}` : ''),
+      chainName: els.taskChainName.value,
+      chainStep: previous?.chainStep || (els.taskChainName.value.trim() ? 1 : 0),
       repeat: els.taskRepeat.value,
       focus: els.taskFocus.value === 'true',
       notes: els.taskNotes.value,
-      completedAt: status === 'completed' ? (previous?.completedAt || new Date().toISOString()) : ''
+      completedAt: storedStatus === 'completed' ? (previous?.completedAt || new Date().toISOString()) : ''
     });
     if (!payload.title) return;
-    if (status === 'waiting' && !payload.waitingOn) payload.waitingOn = 'Other';
+    if (payload.waitingOn && payload.waitingOn === payload.waitingOn2) payload.waitingOn2 = '';
+    if (storedStatus === 'waiting' && !payload.waitingOn && !payload.waitingOn2) payload.waitingOn = 'Other';
     if (previous) tasks = tasks.map(t => t.id === id ? payload : t);
     else tasks.push(payload);
     saveTasks();
-    toast(previous ? 'Task updated' : 'Task added');
+    if (!promptCompletion) toast(previous ? 'Task updated' : 'Task added');
+    return promptCompletion ? payload.id : '';
   }
 
   function completeTask(id) {
@@ -335,8 +365,13 @@
     }
 
     const original = { ...t };
-    t.status = 'completed'; t.completedAt = new Date().toISOString(); t.focus = false; t.updatedAt = new Date().toISOString();
-    if (original.repeat !== 'none' && original.dueDate) {
+    if (original.repeat === 'none') {
+      openCompletionDialog(id);
+      return;
+    }
+
+    finishTask(t, false);
+    if (original.dueDate) {
       const next = fromDateInput(original.dueDate);
       if (original.repeat === 'daily') next.setDate(next.getDate()+1);
       if (original.repeat === 'weekly') next.setDate(next.getDate()+7);
@@ -346,7 +381,55 @@
         reminderDate: original.reminderDate ? toDateInput(next) : '', waitingSince: original.status==='waiting' ? toDateInput(new Date()) : ''
       }));
     }
-    saveTasks(); toast(original.repeat !== 'none' ? 'Completed — next occurrence created' : 'Task completed');
+    saveTasks(); toast('Completed — next occurrence created');
+  }
+
+  function finishTask(t, closeChain) {
+    const stamp = new Date().toISOString();
+    t.status = 'completed';
+    t.completedAt = stamp;
+    t.focus = false;
+    t.updatedAt = stamp;
+    t.chainClosedAt = closeChain ? stamp : '';
+  }
+
+  function openCompletionDialog(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    els.completionTaskId.value = id;
+    els.completionTaskLabel.textContent = `${t.title}${t.project ? ` — ${t.project}` : ''}`;
+    els.nextTaskTitle.value = '';
+    els.nextTaskDueDate.value = '';
+    els.completionDialog.showModal();
+    setTimeout(() => els.nextTaskTitle.focus(), 50);
+  }
+
+  function closeWorkflowChain(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    finishTask(t, true);
+    saveTasks();
+    els.completionDialog.close();
+    toast('Task completed — chain closed');
+  }
+
+  function createNextChainTask(id, title, dueDate) {
+    const original = tasks.find(x => x.id === id);
+    if (!original || !title.trim()) return;
+    const chainId = original.chainId || `c_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+    const chainName = original.chainName || original.project || original.title;
+    original.chainId = chainId;
+    original.chainName = chainName;
+    original.chainStep = original.chainStep || 1;
+    finishTask(original, false);
+    tasks.push(normalizeTask({
+      title: title.trim(), project: original.project, type: original.type, priority: original.priority,
+      status: 'open', dueDate, chainId, chainName, chainStep: original.chainStep + 1,
+      parentTaskId: original.id, notes: ''
+    }));
+    saveTasks();
+    els.completionDialog.close();
+    toast('Task completed — next action created');
   }
 
   function snoozeTask(id) {
@@ -389,9 +472,10 @@
     else if (/\bhigh\b/.test(lower)) result.priority = 'high';
     else if (/\blow\b/.test(lower)) result.priority = 'low';
 
-    for (const person of ['Manta','David','Kerri']) {
-      if (new RegExp(`\\b${person.toLowerCase()}\\b`).test(lower)) { result.waitingOn = person; if (/\bwait|waiting|chase\b/.test(lower)) result.status='waiting'; }
-    }
+    const mentionedPeople = ['Manta','David','Kerri'].filter(person => new RegExp(`\\b${person.toLowerCase()}\\b`).test(lower));
+    if (mentionedPeople[0]) result.waitingOn = mentionedPeople[0];
+    if (mentionedPeople[1]) result.waitingOn2 = mentionedPeople[1];
+    if (mentionedPeople.length && /\bwait|waiting|chase\b/.test(lower)) result.status='waiting';
     if (/\bwaiting\b/.test(lower)) result.status = 'waiting';
     if (/\bcall\b|\bring\b/.test(lower)) result.type = 'Call';
     if (/\bemail\b/.test(lower)) result.type = 'Email';
@@ -419,6 +503,7 @@
     const card = btn.closest('[data-task-id]');
     if (!card) return;
     const id = card.dataset.taskId;
+    if (els.searchDialog.open) els.searchDialog.close();
     if (btn.dataset.action === 'toggle') completeTask(id);
     if (btn.dataset.action === 'edit') openEditTask(id);
     if (btn.dataset.action === 'snooze') snoozeTask(id);
@@ -447,7 +532,8 @@
       list.forEach(t => {
         let extra = '';
         if (t.project) extra += ` — ${t.project}`;
-        if (t.status === 'waiting' && t.waitingOn) extra += ` — waiting on ${t.waitingOn}`;
+        if (t.status === 'waiting' && taskWaiters(t).length) extra += ` — waiting on ${taskWaiters(t).join(' + ')}`;
+        if (t.chainName) extra += ` — workflow ${t.chainName}, step ${t.chainStep || 1}`;
         if (t.dueDate) extra += ` — due ${formatDate(t.dueDate,{weekday:true})}`;
         lines.push(`• ${t.title}${extra}`);
       });
@@ -509,18 +595,42 @@
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
+  function renderGlobalSearch() {
+    const q = els.globalSearchInput.value.trim().toLowerCase();
+    if (!q) {
+      els.globalSearchResults.innerHTML = emptyState('Start typing to search all BearOps history.');
+      return;
+    }
+    const words = q.split(/\s+/).filter(Boolean);
+    const results = sortTasks(tasks.filter(t => words.every(word => taskSearchText(t).includes(word)))).slice(0, 40);
+    els.globalSearchResults.innerHTML = results.length ? results.map(taskCard).join('') : emptyState('No matching work found.');
+  }
+
   // Navigation and actions
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => openView(btn.dataset.view)));
   document.querySelectorAll('[data-open-view]').forEach(btn => btn.addEventListener('click', () => openView(btn.dataset.openView)));
   document.querySelectorAll('[data-new-task]').forEach(btn => btn.addEventListener('click', () => openNewTask(btn.textContent.includes('waiting') ? { status:'waiting' } : {})));
   $('quickAddBtn').addEventListener('click', () => { els.quickText.value=''; els.quickDialog.showModal(); setTimeout(()=>els.quickText.focus(),50); });
+  $('globalSearchBtn').addEventListener('click', () => {
+    els.globalSearchInput.value = '';
+    renderGlobalSearch();
+    els.searchDialog.showModal();
+    setTimeout(() => els.globalSearchInput.focus(), 50);
+  });
   $('focusBtn').addEventListener('click', buildMyDay);
   $('closeDialogBtn').addEventListener('click', () => els.taskDialog.close());
   $('cancelTaskBtn').addEventListener('click', () => els.taskDialog.close());
   $('closeQuickBtn').addEventListener('click', () => els.quickDialog.close());
   $('quickCancelBtn').addEventListener('click', () => els.quickDialog.close());
+  $('closeSearchBtn').addEventListener('click', () => els.searchDialog.close());
+  $('closeCompletionBtn').addEventListener('click', () => els.completionDialog.close());
 
-  els.taskForm.addEventListener('submit', (e) => { e.preventDefault(); saveFromForm(); els.taskDialog.close(); });
+  els.taskForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const completionId = saveFromForm();
+    els.taskDialog.close();
+    if (completionId) openCompletionDialog(completionId);
+  });
   els.quickForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!els.quickText.value.trim()) return;
@@ -535,6 +645,15 @@
   });
 
   [els.priorityQueue, els.upNextList, els.allTasksList, els.waitingList, els.completedList].forEach(el => el.addEventListener('click', taskActionHandler));
+  els.globalSearchResults.addEventListener('click', taskActionHandler);
+  els.globalSearchInput.addEventListener('input', renderGlobalSearch);
+
+  els.completionForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!els.nextTaskTitle.value.trim()) return toast('Enter the next task or close the chain');
+    createNextChainTask(els.completionTaskId.value, els.nextTaskTitle.value, els.nextTaskDueDate.value);
+  });
+  $('closeChainBtn').addEventListener('click', () => closeWorkflowChain(els.completionTaskId.value));
 
   els.bottleneckStrip.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-waiting-person]'); if (!btn) return;
