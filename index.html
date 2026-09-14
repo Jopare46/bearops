@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#101827" />
+  <meta name="theme-color" content="#090a0c" />
   <meta name="description" content="BearOps - personal work command centre for tasks, deadlines and bottlenecks." />
   <title>BearOps</title>
   <link rel="manifest" href="./manifest.json" />
@@ -16,7 +16,7 @@
     <header class="topbar">
       <div>
         <div class="brand-row">
-          <div class="brand-mark" aria-hidden="true">B</div>
+          <img class="brand-logo" src="./icon-512.png" alt="BearOps logo" />
           <div>
             <h1>BearOps</h1>
             <p id="todayLabel" class="muted"></p>
@@ -153,11 +153,11 @@
 
           <section class="panel compact">
             <h3>Data</h3>
-            <p class="muted">Your tasks are stored locally on this device/browser.</p>
+            <p class="muted">Your tasks are stored locally on this device/browser. The current work list is preloaded on a fresh install and can be reloaded here if needed.</p>
             <div class="row-actions wrap">
               <button id="exportBtn" class="btn" type="button">Export backup</button>
               <label class="btn secondary file-label">Import backup<input id="importInput" type="file" accept="application/json" hidden /></label>
-              <button id="seedBtn" class="btn secondary" type="button">Load sample tasks</button>
+              <button id="seedBtn" class="btn secondary" type="button">Load current work list</button>
               <button id="resetBtn" class="btn danger-outline" type="button">Reset app</button>
             </div>
           </section>
@@ -329,6 +329,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="./seed.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

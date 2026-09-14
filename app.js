@@ -170,11 +170,17 @@
     const queue = sortTasks(open.filter(t => t.focus || isOverdue(t) || isDueToday(t) || t.priority === 'critical' || t.priority === 'high')).slice(0,7);
     els.priorityQueue.innerHTML = queue.length ? queue.map(taskCard).join('') : emptyState('Nothing urgent. Add a task or build your day.');
 
-    const counts = WAITING_DEFAULTS.map(name => [name, waiting.filter(t => t.waitingOn === name).length])
+    const corePeople = ['Manta','David','Kerri'];
+    const activeOthers = WAITING_DEFAULTS
+      .filter(name => !corePeople.includes(name))
+      .map(name => [name, waiting.filter(t => t.waitingOn === name).length])
       .filter(([,count]) => count > 0)
-      .sort((a,b) => b[1]-a[1])
-      .slice(0,6);
-    els.bottleneckStrip.innerHTML = counts.length ? counts.map(([name,count],i) => `<button class="bottle-card ${i===0 && count>1 ? 'hot' : ''}" type="button" data-waiting-person="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>${count} ${count===1?'item':'items'} waiting</span></button>`).join('') : emptyState('No active bottlenecks.');
+      .sort((a,b) => b[1]-a[1]);
+    const counts = [
+      ...corePeople.map(name => [name, waiting.filter(t => t.waitingOn === name).length]),
+      ...activeOthers
+    ].slice(0,6);
+    els.bottleneckStrip.innerHTML = counts.map(([name,count]) => `<button class="bottle-card ${count>1 ? 'hot' : ''}" type="button" data-waiting-person="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>${count} ${count===1?'item':'items'} waiting</span></button>`).join('');
 
     const next = sortTasks(open.filter(t => t.dueDate && !isOverdue(t) && !isDueToday(t))).slice(0,6);
     els.upNextList.innerHTML = next.length ? next.map(taskCard).join('') : emptyState('No upcoming deadlines yet.');
@@ -199,7 +205,9 @@
 
   function renderWaiting() {
     const waiting = tasks.filter(t => t.status === 'waiting');
-    const people = ['All', ...WAITING_DEFAULTS.filter(name => waiting.some(t => t.waitingOn === name))];
+    const corePeople = ['Manta','David','Kerri'];
+    const activeOthers = WAITING_DEFAULTS.filter(name => !corePeople.includes(name) && waiting.some(t => t.waitingOn === name));
+    const people = ['All', ...corePeople, ...activeOthers];
     els.waitingPeopleTabs.innerHTML = people.map(name => `<button class="chip ${activeWaitingFilter===name?'active':''}" type="button" data-wait-filter="${escapeHtml(name)}">${escapeHtml(name)}${name==='All' ? ` (${waiting.length})` : ` (${waiting.filter(t=>t.waitingOn===name).length})`}</button>`).join('');
     let list = waiting;
     if (activeWaitingFilter !== 'All') list = list.filter(t => t.waitingOn === activeWaitingFilter);
@@ -474,20 +482,6 @@
     } catch { toast('Could not import that backup'); }
   }
 
-  function sampleTasks() {
-    const today = new Date();
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-    const fri = new Date(today); fri.setDate(today.getDate()+((5-today.getDay()+7)%7 || 7));
-    tasks = [
-      normalizeTask({ title:'Confirm production status of curved frames', project:'Windsor Terrace', priority:'critical', dueDate:toDateInput(today), type:'Supplier', status:'waiting', waitingOn:'Manta', chaseDate:toDateInput(today), notes:'Need a date that can be communicated onward.' }),
-      normalizeTask({ title:'Work with Damian to finalise invoice so metal can be ordered', project:'Frascati', priority:'high', dueDate:toDateInput(today), type:'Order', focus:true }),
-      normalizeTask({ title:'Book crane for installation', project:'Niamh Curtain', priority:'high', dueDate:toDateInput(tomorrow), type:'Installation' }),
-      normalizeTask({ title:'Follow up pricing response', project:'Mandy Prunty', priority:'normal', dueDate:toDateInput(fri), type:'Follow-up', status:'waiting', waitingOn:'Kerri', chaseDate:toDateInput(fri) }),
-      normalizeTask({ title:'Confirm powder coating detail', project:'Glenlion', priority:'normal', status:'waiting', waitingOn:'David', chaseDate:toDateInput(tomorrow), type:'Follow-up' })
-    ];
-    saveTasks(); toast('Sample tasks loaded');
-  }
-
   function reminderTimestamp(t) {
     if (!t.reminderDate) return null;
     const time = t.reminderTime || '09:00';
@@ -565,7 +559,12 @@
 
   $('exportBtn').addEventListener('click', exportBackup);
   $('importInput').addEventListener('change', e => { const file = e.target.files?.[0]; if (file) importBackup(file); e.target.value=''; });
-  $('seedBtn').addEventListener('click', () => { if (!tasks.length || confirm('Replace current tasks with sample tasks?')) sampleTasks(); });
+  $('seedBtn').addEventListener('click', () => {
+    if (!window.BearOpsSeed?.writeCurrentList) return toast('Current work list is unavailable');
+    if (tasks.length && !confirm('Replace your current BearOps tasks with the preloaded current work list?')) return;
+    window.BearOpsSeed.writeCurrentList();
+    location.reload();
+  });
   $('resetBtn').addEventListener('click', () => { if (confirm('Reset BearOps and delete all local tasks?')) { tasks=[]; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(REMINDER_KEY); renderAll(); toast('BearOps reset'); } });
   $('shareSummaryBtn').addEventListener('click', generateSummary);
 
