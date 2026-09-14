@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101827" />
+  <meta name="description" content="BearOps - personal work command centre for tasks, deadlines and bottlenecks." />
+  <title>BearOps</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="appShell" class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">B</div>
+          <div>
+            <h1>BearOps</h1>
+            <p id="todayLabel" class="muted"></p>
+          </div>
+        </div>
+      </div>
+      <button id="quickAddBtn" class="icon-btn primary" type="button" aria-label="Add task">+</button>
+    </header>
+
+    <main>
+      <section id="todayView" class="view active" aria-labelledby="todayHeading">
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow">TODAY</p>
+            <h2 id="todayHeading">What needs attention now?</h2>
+          </div>
+          <div class="hero-actions">
+            <button id="focusBtn" class="btn" type="button">Build my day</button>
+          </div>
+          <div id="statsGrid" class="stats-grid"></div>
+        </div>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">DO FIRST</p>
+              <h3>Priority queue</h3>
+            </div>
+            <button class="text-btn" data-open-view="tasks" type="button">See all</button>
+          </div>
+          <div id="priorityQueue" class="task-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">BOTTLENECKS</p>
+              <h3>Waiting on people</h3>
+            </div>
+            <button class="text-btn" data-open-view="waiting" type="button">Open waiting</button>
+          </div>
+          <div id="bottleneckStrip" class="bottleneck-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">UP NEXT</p>
+              <h3>Next deadlines</h3>
+            </div>
+          </div>
+          <div id="upNextList" class="task-list"></div>
+        </section>
+      </section>
+
+      <section id="tasksView" class="view" aria-labelledby="tasksHeading">
+        <div class="section-head page-head">
+          <div>
+            <p class="eyebrow">MY QUEUE</p>
+            <h2 id="tasksHeading">Tasks</h2>
+          </div>
+          <button class="btn primary" data-new-task type="button">Add task</button>
+        </div>
+        <div class="filter-bar">
+          <select id="taskStatusFilter" aria-label="Filter by status">
+            <option value="open">Open</option>
+            <option value="all">All</option>
+            <option value="today">Today</option>
+            <option value="overdue">Overdue</option>
+            <option value="completed">Completed</option>
+          </select>
+          <select id="taskPriorityFilter" aria-label="Filter by priority">
+            <option value="all">All priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
+          <input id="taskSearch" type="search" placeholder="Search tasks or projects" />
+        </div>
+        <div id="allTasksList" class="task-list"></div>
+      </section>
+
+      <section id="waitingView" class="view" aria-labelledby="waitingHeading">
+        <div class="section-head page-head">
+          <div>
+            <p class="eyebrow">WAITING</p>
+            <h2 id="waitingHeading">Bottlenecks</h2>
+          </div>
+          <button class="btn primary" data-new-task type="button">Add waiting item</button>
+        </div>
+        <div id="waitingPeopleTabs" class="chip-row" role="tablist" aria-label="Waiting on person"></div>
+        <div id="waitingList" class="task-list"></div>
+      </section>
+
+      <section id="projectsView" class="view" aria-labelledby="projectsHeading">
+        <div class="section-head page-head">
+          <div>
+            <p class="eyebrow">PROJECTS</p>
+            <h2 id="projectsHeading">Open work by project</h2>
+          </div>
+        </div>
+        <div id="projectsList" class="project-list"></div>
+      </section>
+
+      <section id="completedView" class="view" aria-labelledby="completedHeading">
+        <div class="section-head page-head">
+          <div>
+            <p class="eyebrow">DONE</p>
+            <h2 id="completedHeading">Completed</h2>
+          </div>
+          <button id="clearCompletedBtn" class="text-btn danger" type="button">Clear completed</button>
+        </div>
+        <div id="completedList" class="task-list"></div>
+      </section>
+
+      <section id="moreView" class="view" aria-labelledby="moreHeading">
+        <div class="section-head page-head">
+          <div>
+            <p class="eyebrow">SETTINGS</p>
+            <h2 id="moreHeading">BearOps setup</h2>
+          </div>
+        </div>
+
+        <div class="settings-stack">
+          <section class="panel compact">
+            <h3>Reminder behaviour</h3>
+            <p class="muted">BearOps checks reminders while the app is open. Browser notifications can also fire while the page is active. For guaranteed background reminders, use calendar export or a future push service.</p>
+            <div class="row-actions">
+              <button id="notificationBtn" class="btn" type="button">Enable notifications</button>
+              <button id="testNotificationBtn" class="btn secondary" type="button">Test</button>
+            </div>
+          </section>
+
+          <section class="panel compact">
+            <h3>Data</h3>
+            <p class="muted">Your tasks are stored locally on this device/browser.</p>
+            <div class="row-actions wrap">
+              <button id="exportBtn" class="btn" type="button">Export backup</button>
+              <label class="btn secondary file-label">Import backup<input id="importInput" type="file" accept="application/json" hidden /></label>
+              <button id="seedBtn" class="btn secondary" type="button">Load sample tasks</button>
+              <button id="resetBtn" class="btn danger-outline" type="button">Reset app</button>
+            </div>
+          </section>
+
+          <section class="panel compact">
+            <h3>Share / review</h3>
+            <p class="muted">Generate a clean text snapshot of your current workload to paste into ChatGPT or email.</p>
+            <button id="shareSummaryBtn" class="btn" type="button">Generate work summary</button>
+            <textarea id="summaryOutput" class="summary-output" rows="10" readonly placeholder="Your work summary will appear here."></textarea>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Primary">
+      <button class="nav-item active" data-view="today" type="button"><span>⌂</span><small>Today</small></button>
+      <button class="nav-item" data-view="tasks" type="button"><span>☑</span><small>Tasks</small></button>
+      <button class="nav-item" data-view="waiting" type="button"><span>⏳</span><small>Waiting</small></button>
+      <button class="nav-item" data-view="projects" type="button"><span>▦</span><small>Projects</small></button>
+      <button class="nav-item" data-view="more" type="button"><span>⋯</span><small>More</small></button>
+    </nav>
+  </div>
+
+  <dialog id="taskDialog" class="task-dialog">
+    <form id="taskForm" method="dialog" class="task-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">TASK</p>
+          <h2 id="dialogTitle">Add task</h2>
+        </div>
+        <button id="closeDialogBtn" class="icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+
+      <input id="taskId" type="hidden" />
+
+      <label>Task
+        <input id="taskTitle" required maxlength="160" placeholder="e.g. Chase IQ on Windsor Terrace" />
+      </label>
+
+      <div class="grid-2">
+        <label>Project
+          <input id="taskProject" maxlength="80" placeholder="e.g. Windsor Terrace" />
+        </label>
+        <label>Type
+          <select id="taskType">
+            <option>Follow-up</option>
+            <option>Call</option>
+            <option>Email</option>
+            <option>Pricing</option>
+            <option>Order</option>
+            <option>Survey</option>
+            <option>Site</option>
+            <option>Installation</option>
+            <option>Supplier</option>
+            <option>Snag</option>
+            <option>Admin</option>
+            <option>Other</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Priority
+          <select id="taskPriority">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="normal" selected>Normal</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label>Status
+          <select id="taskStatus">
+            <option value="open">Open</option>
+            <option value="waiting">Waiting</option>
+            <option value="completed">Completed</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Due date
+          <input id="taskDueDate" type="date" />
+        </label>
+        <label>Due time
+          <input id="taskDueTime" type="time" />
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Reminder date
+          <input id="taskReminderDate" type="date" />
+        </label>
+        <label>Reminder time
+          <input id="taskReminderTime" type="time" />
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Waiting on
+          <select id="taskWaitingOn">
+            <option value="">—</option>
+            <option>Manta</option>
+            <option>David</option>
+            <option>Kerri</option>
+            <option>Factory</option>
+            <option>Supplier</option>
+            <option>Client</option>
+            <option>Architect</option>
+            <option>Installer</option>
+            <option>Prestige / Internal</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Chase date
+          <input id="taskChaseDate" type="date" />
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Repeat
+          <select id="taskRepeat">
+            <option value="none">No repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+        <label>Focus today
+          <select id="taskFocus">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+      </div>
+
+      <label>Notes
+        <textarea id="taskNotes" rows="4" maxlength="2000" placeholder="Context, promises, next step, supplier update…"></textarea>
+      </label>
+
+      <div class="dialog-actions">
+        <button id="deleteTaskBtn" class="btn danger-outline hidden" type="button">Delete</button>
+        <div class="spacer"></div>
+        <button id="cancelTaskBtn" class="btn secondary" type="button">Cancel</button>
+        <button class="btn primary" type="submit">Save task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="quickDialog" class="task-dialog small">
+    <form id="quickForm" class="task-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">QUICK ADD</p>
+          <h2>Capture it now</h2>
+        </div>
+        <button id="closeQuickBtn" class="icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+      <label>Type it naturally
+        <textarea id="quickText" rows="4" placeholder="e.g. Windsor Terrace chase Manta Friday high"></textarea>
+      </label>
+      <p class="muted small-text">Understands basic words such as today, tomorrow, Friday, high, critical, Manta, David, Kerri and waiting.</p>
+      <div class="dialog-actions">
+        <div class="spacer"></div>
+        <button class="btn secondary" id="quickCancelBtn" type="button">Cancel</button>
+        <button class="btn primary" type="submit">Add task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
